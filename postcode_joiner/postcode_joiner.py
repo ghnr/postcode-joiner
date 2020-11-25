@@ -54,8 +54,8 @@ class PostCodeJoiner:
         coords_1 = np.stack((np.asarray(self.np_addresses[:, 2], dtype=np.float32),
                              np.asarray(self.np_addresses[:, 3], dtype=np.float32)),
                             axis=1)
-        coords_2 = np.stack((np.asarray(self.np_postcodes[:, 2], dtype=np.float32),
-                             np.asarray(self.np_postcodes[:, 3], dtype=np.float32)),
+        coords_2 = np.stack((np.asarray(self.np_postcodes[:, 3], dtype=np.float32),
+                             np.asarray(self.np_postcodes[:, 4], dtype=np.float32)),
                             axis=1)
         return coords_1, coords_2
     

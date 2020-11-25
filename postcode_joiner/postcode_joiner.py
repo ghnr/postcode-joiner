@@ -1,44 +1,33 @@
+import numpy as np
 import pandas as pd
 
 class PostCodeJoiner:
     def __init__(self, address_path, postcode_path):
-        self.df_address_list = self.set_dataframe(address_path)
-        self.df_postcode_ref = self.set_dataframe(postcode_path)
-        
-    def set_dataframe(self, csv_path):
-        # Read the csv files into a pandas dataframe
-        return pd.read_csv(csv_path)
+        self.np_postcodes = self.set_arrays(postcode_path)
+        self.np_addresses = self.set_arrays(address_path,
+                                            use_cols=[0,1,2,3,4],
+                                            converter={"Latitude": self.coerce_as_float})
+    
+    @staticmethod
+    def coerce_as_float(x):
+        try:
+            return np.float32(x)
+        except ValueError:
+            return np.nan
+    
+    @staticmethod
+    def set_arrays(csv_path, use_cols=None, converter=None):
+        """
+        Use pandas to read the csv (faster than numpy's read_txt and gen_txt cannot handle commas inside comma delimited file)
+        Returns numpy array with specified columns and coerced float types if requested
+        """
+        return pd.read_csv(csv_path, use_cols, converter).values
     
     def convert_address_col_to_float(self, col_name):
         # Address list latitude is an object/str, cast it to a float
         # Errors in conversion will change the stored value to NaN (coerce)
         self.df_address_list[col_name] = pd.to_numeric(self.df_address_list[col_name],
                                                        errors="coerce")
-        
-    def rename_postcode_ref_column(self, rename_mapping):
-        # Rename the columns in the postcode reference to match the names in df_address_list
-        self.df_postcode_ref.rename(columns=rename_mapping,
-                                    inplace=True)
-        
-    def round_column_floats(self, col_name, decimal_places):
-        # Rounds floats to N number of decimal places
-        self.df_address_list[f"{col_name} (rounded)"] = self.df_address_list[col_name].round(decimal_places)
-        self.df_postcode_ref[f"{col_name} (rounded)"] = self.df_postcode_ref[col_name].round(decimal_places)
-        
-    def merge_postcode_reference(self):
-        # Left merges the postcode data and the address data on Latitude and Longitude
-        original_columns = list(self.df_address_list.columns)
-
-        df_postcode_ref_trimmed = self.df_postcode_ref[["postcode", "Latitude (rounded)", "Longitude (rounded)"]]
-        
-        self.df_address_list = self.df_address_list.merge(df_postcode_ref_trimmed,
-                                                          on=["Latitude (rounded)", "Longitude (rounded)"],
-                                                          how="left")
-        
-        # Dropping dupes based on original columns to remove multiple postcode matches due to the rounding fuzziness
-        self.df_address_list.drop_duplicates(original_columns,
-                                             keep="first",
-                                             inplace=True)
         
     def extract_postcode_from_location(self):
         # Uses the UK postcode regex pattern to extract postcode from Location column

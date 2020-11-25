@@ -22,12 +22,6 @@ class PostCodeJoiner:
         Returns numpy array with specified columns and coerced float types if requested
         """
         return pd.read_csv(csv_path, use_cols, converter).values
-    
-    def convert_address_col_to_float(self, col_name):
-        # Address list latitude is an object/str, cast it to a float
-        # Errors in conversion will change the stored value to NaN (coerce)
-        self.df_address_list[col_name] = pd.to_numeric(self.df_address_list[col_name],
-                                                       errors="coerce")
         
     def extract_postcode_from_location(self):
         # Uses the UK postcode regex pattern to extract postcode from Location column
@@ -39,15 +33,6 @@ class PostCodeJoiner:
         # Creates new column called validated with comparison of extracted postcode and inferred postcode
         self.df_address_list.loc[self.df_address_list["postcode"] == self.df_address_list["Postcode in Location"], "validated"] = True
         self.df_address_list.loc[self.df_address_list["postcode"] != self.df_address_list["Postcode in Location"], "validated"] = False
-        
-    def misc_clean_output_data(self):
-        # Pandas quirk of reading a csv without a defined column name, rename back to original name
-        self.df_address_list.rename(columns={"Unnamed: 5": ""},
-                                    inplace=True)
-        # Removes extra columns created during the intermediary steps
-        self.df_address_list.drop(["Postcode in Location", "Latitude (rounded)", "Longitude (rounded)"],
-                                  axis=1,
-                                  inplace=True)
         
     def export_as_tsv(self, export_path):
         # Exports to csv with tab \t separator
@@ -64,13 +49,9 @@ if __name__ == '__main__':
     # Instantiate class
     postcode_joiner = PostCodeJoiner(ADDRESS_FILE_PATH, POSTCODE_FILE_PATH)
     
-    # Squash strings in latitude to floats
-    postcode_joiner.convert_address_col_to_float("Latitude")
     # Regex pattern extract postcode from Location column
     postcode_joiner.extract_postcode_from_location()
     # Compare extracted postcode to Long/Lat inferred postcode
     postcode_joiner.validate_postcodes()
-    # Remove additional columns created in preparation for export
-    postcode_joiner.misc_clean_output_data()
     # Export data with two additional columns as .tsv
     postcode_joiner.export_as_tsv("./data/address_list.tsv")

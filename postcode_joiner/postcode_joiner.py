@@ -1,13 +1,16 @@
+import csv
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import cdist
 
 class PostCodeJoiner:
     def __init__(self, address_path, postcode_path):
-        self.np_postcodes = self.set_arrays(postcode_path)
+        self.np_postcodes = self.set_arrays(postcode_path).values
         self.np_addresses = self.set_arrays(address_path,
                                             use_cols=[0,1,2,3,4],
-                                            converter={"Latitude": self.coerce_as_float})
+                                            type_converter={"Latitude": self.coerce_as_float})
+        self.column_names = list(self.np_addresses.columns)
+        self.np_addresses = self.np_addresses.values
     
     @staticmethod
     def coerce_as_float(x):
@@ -91,16 +94,24 @@ class PostCodeJoiner:
         POSTCODE_REGEX_PATTERN = "([A-Z][A-HJ-Y]?[0-9][A-Z0-9]? ?[0-9][A-Z]{2}|GIR ?0A{2})"
         return pd.Series(self.np_addresses[:, 4]).str.extract(POSTCODE_REGEX_PATTERN, expand=False).values
     
-    def validate_postcodes(self):
-        # Creates new column called validated with comparison of extracted postcode and inferred postcode
-        self.df_address_list.loc[self.df_address_list["postcode"] == self.df_address_list["Postcode in Location"], "validated"] = True
-        self.df_address_list.loc[self.df_address_list["postcode"] != self.df_address_list["Postcode in Location"], "validated"] = False
+    @staticmethod
+    def validate_postcodes(extracted_postcodes, min_distance_postcodes):
+        """
+        Returns numpy array of True/False values where regex extracted postcode matches min distance computed postcodes
+        """
+        return extracted_postcodes == min_distance_postcodes
         
-    def export_as_tsv(self, export_path):
-        # Exports to csv with tab \t separator
-        self.df_address_list.to_csv(export_path,
-                                    sep="\t",
-                                    index=False)
+    def export_as_tsv(self, export_path, np_min_distance_postcodes, np_valid_postcodes):
+        
+        np_address_extra_cols = np.concatenate([self.np_addresses,
+                                                np_min_distance_postcodes[:, None],
+                                                np_valid_postcodes[:, None]],
+                                               axis=1)
+
+        with open(export_path, 'w', newline='') as tsv_file:
+            csv.writer(tsv_file, delimiter="\t").writerow(self.column_names + ["Postcode (nearest match)", "Validated"])
+            csv.writer(tsv_file, delimiter="\t").writerows(np_address_extra_cols)
+
         print(".tsv file successfully exported to " + export_path)
 
 if __name__ == '__main__':
@@ -119,4 +130,4 @@ if __name__ == '__main__':
     # Compare extracted postcode to Long/Lat inferred postcode
     valid_postcodes = postcode_joiner.validate_postcodes(extracted_postcodes, min_distance_postcodes)
     # Export data with two additional columns as .tsv
-    postcode_joiner.export_as_tsv("./data/address_list.tsv")
+    postcode_joiner.export_as_tsv("./data/address_list.tsv", min_distance_postcodes, valid_postcodes)

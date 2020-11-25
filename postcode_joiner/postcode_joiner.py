@@ -24,6 +24,10 @@ class PostCodeJoiner:
         """
         return pd.read_csv(csv_path, use_cols, converter).values
 
+    def filter_invalid_postcodes(self):
+        np_is_active_postcode = np.isnan(np.asarray(self.np_postcodes[:,2], dtype=np.float32))
+        self.np_postcodes = self.np_postcodes[np_is_active_postcode]
+
     @staticmethod
     def compute_haversine_distance(arr_1, arr_2, r=6371):
         """
@@ -103,11 +107,13 @@ if __name__ == '__main__':
     
     # Instantiate class
     postcode_joiner = PostCodeJoiner(ADDRESS_FILE_PATH, POSTCODE_FILE_PATH)
+
+    postcode_joiner.filter_invalid_postcodes()
     
-    postcode_joiner.get_minimum_distance_postcodes(tradeoff="speed")
+    min_distance_postcodes = postcode_joiner.get_minimum_distance_postcodes(tradeoff="speed")
     # Regex pattern extract postcode from Location column
-    postcode_joiner.extract_postcode_from_location()
+    extracted_postcodes = postcode_joiner.extract_postcode_from_location()
     # Compare extracted postcode to Long/Lat inferred postcode
-    postcode_joiner.validate_postcodes()
+    valid_postcodes = postcode_joiner.validate_postcodes(extracted_postcodes, min_distance_postcodes)
     # Export data with two additional columns as .tsv
     postcode_joiner.export_as_tsv("./data/address_list.tsv")

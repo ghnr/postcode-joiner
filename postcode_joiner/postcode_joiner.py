@@ -83,10 +83,13 @@ class PostCodeJoiner:
         return self.np_postcodes[np.concatenate(min_distance_args), 0]
         
     def extract_postcode_from_location(self):
-        # Uses the UK postcode regex pattern to extract postcode from Location column
-        # Postcode regex (un-anchored) https://stackoverflow.com/a/51885364/5437165
+        """
+        Uses the UK postcode regex pattern to extract postcode from Location column
+        Postcode regex (un-anchored) https://stackoverflow.com/a/51885364/5437165
+        Returns numpy array of postcodes matched from Location column (index=4), NaN values if not matched
+        """
         POSTCODE_REGEX_PATTERN = "([A-Z][A-HJ-Y]?[0-9][A-Z0-9]? ?[0-9][A-Z]{2}|GIR ?0A{2})"
-        self.df_address_list["Postcode in Location"] = self.df_address_list["Location"].str.extract(POSTCODE_REGEX_PATTERN)
+        return pd.Series(self.np_addresses[:, 4]).str.extract(POSTCODE_REGEX_PATTERN, expand=False).values
     
     def validate_postcodes(self):
         # Creates new column called validated with comparison of extracted postcode and inferred postcode

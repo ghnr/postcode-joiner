@@ -1,3 +1,4 @@
+import numpy as np
 from pandas import read_csv
 
 # Expected results to assert that output results are equal to this
@@ -11,3 +12,6 @@ result_address_validated = read_csv("./results/test_address_list_validated.csv")
 result_address_cleaned = read_csv("./results/test_address_list_cleaned.csv")
 result_address_cleaned.rename(columns={"Unnamed: 5": ""}, inplace=True) # fixing pandas read_csv on unnamed col
 result_export = read_csv("./results/result.tsv")
+
+haversine_result = np.array([[5.05608563]])
+euclidean_result = np.array([[0.04800872]])

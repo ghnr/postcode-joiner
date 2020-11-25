@@ -14,6 +14,9 @@ class PostCodeJoiner:
     
     @staticmethod
     def coerce_as_float(x):
+        """
+        Function used in read_csv to coerce float types to a float32 or NaN
+        """
         try:
             return np.float32(x)
         except ValueError:
@@ -28,6 +31,9 @@ class PostCodeJoiner:
         return pd.read_csv(csv_path, usecols=use_cols, converters=type_converter)
         
     def filter_invalid_postcodes(self):
+        """
+        Removes terminated postcodes from postcode reference by checking for non-null in that column
+        """
         np_is_active_postcode = np.isnan(np.asarray(self.np_postcodes[:,2], dtype=np.float32))
         self.np_postcodes = self.np_postcodes[np_is_active_postcode]
 
@@ -51,9 +57,16 @@ class PostCodeJoiner:
 
     @staticmethod
     def compute_euclidean_distance(arr_1, arr_2):
+        """
+        Calculate distance between two points using Euclidean distance (plane)
+        """
         return cdist(arr_1, arr_2, metric='euclidean')
     
     def stack_lat_long_pairs(self):
+        """
+        Returns stacked latitude longitude pairs
+        Example: array([[5.16155e+01, 3.26590e-02], ...])
+        """
         coords_1 = np.stack((np.asarray(self.np_addresses[:, 2], dtype=np.float32),
                              np.asarray(self.np_addresses[:, 3], dtype=np.float32)),
                             axis=1)
@@ -63,6 +76,10 @@ class PostCodeJoiner:
         return coords_1, coords_2
     
     def compute_in_chunks(self, tradeoff, N=5000):
+        """
+        Minimises memory and processing overhead
+        Process distance computations in chunks of size N for len/N total chunks
+        """
         
         if tradeoff not in ["accuracy", "speed"]:
             raise ValueError("Trade-off must be either speed or accuracy")
@@ -72,9 +89,10 @@ class PostCodeJoiner:
         
         for i in range(0, len(self.np_addresses), N):
             if tradeoff == "accuracy":
-                # Using Haversine distance formula (slower but higher accuracy)
+                # Using Haversine distance formula (7-10x slower but higher accuracy)
                 distances = self.compute_haversine_distance(coords_1[i:i + N], coords_2)
             else:
+                # Using Euclidean distance formula (much faster but worse accuracy, ~18% difference in postcodes dataset)
                 distances = self.compute_euclidean_distance(coords_1[i:i + N], coords_2)
 
             min_distance_args.append(np.argmin(distances, axis=1))
@@ -82,6 +100,9 @@ class PostCodeJoiner:
         return min_distance_args
 
     def get_minimum_distance_postcodes(self, tradeoff):
+        """
+        Returns the postcodes that have the minimum distance to each lat/long pair in address array (NxM)
+        """
         min_distance_args = self.compute_in_chunks(tradeoff)
         return self.np_postcodes[np.concatenate(min_distance_args), 0]
         
@@ -102,6 +123,9 @@ class PostCodeJoiner:
         return extracted_postcodes == min_distance_postcodes
         
     def export_as_tsv(self, export_path, np_min_distance_postcodes, np_valid_postcodes):
+        """
+        Exports numpy ndarray as tsv with the insertion of the additional columns
+        """
         
         np_address_extra_cols = np.concatenate([self.np_addresses,
                                                 np_min_distance_postcodes[:, None],
@@ -121,13 +145,13 @@ if __name__ == '__main__':
     
     # Instantiate class
     postcode_joiner = PostCodeJoiner(ADDRESS_FILE_PATH, POSTCODE_FILE_PATH)
-
+    # Remove terminated postcodes
     postcode_joiner.filter_invalid_postcodes()
-    
+    # Compute minimum postcode for each address by distance. accuracy->Haversine, speed->Euclidean
     min_distance_postcodes = postcode_joiner.get_minimum_distance_postcodes(tradeoff="speed")
     # Regex pattern extract postcode from Location column
     extracted_postcodes = postcode_joiner.extract_postcode_from_location()
-    # Compare extracted postcode to Long/Lat inferred postcode
+    # Validate distance minimised postcode with text extracted postcode
     valid_postcodes = postcode_joiner.validate_postcodes(extracted_postcodes, min_distance_postcodes)
     # Export data with two additional columns as .tsv
     postcode_joiner.export_as_tsv("./data/address_list.tsv", min_distance_postcodes, valid_postcodes)

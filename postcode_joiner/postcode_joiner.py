@@ -77,14 +77,6 @@ if __name__ == '__main__':
     
     # Squash strings in latitude to floats
     postcode_joiner.convert_address_col_to_float("Latitude")
-    # Rename columns so both dataframes are consistent
-    postcode_joiner.rename_postcode_ref_column(rename_mapping={"lat": "Latitude",
-                                                               "long": "Longitude"})
-    # Round columns to 3 dp
-    postcode_joiner.round_column_floats("Latitude", decimal_places=3)
-    postcode_joiner.round_column_floats("Longitude", decimal_places=3)
-    # Merge dataframes on Long/Lat pair
-    postcode_joiner.merge_postcode_reference()
     # Regex pattern extract postcode from Location column
     postcode_joiner.extract_postcode_from_location()
     # Compare extracted postcode to Long/Lat inferred postcode

@@ -17,13 +17,13 @@ class PostCodeJoiner:
             return np.nan
     
     @staticmethod
-    def set_arrays(csv_path, use_cols=None, converter=None):
+    def set_arrays(csv_path, use_cols=None, type_converter=None):
         """
         Use pandas to read the csv (faster than numpy's read_txt and gen_txt cannot handle commas inside comma delimited file)
-        Returns numpy array with specified columns and with coerced float types if requested
+        Returns dataframe with specified columns and with coerced float types if requested
         """
-        return pd.read_csv(csv_path, use_cols, converter).values
-
+        return pd.read_csv(csv_path, usecols=use_cols, converters=type_converter)
+        
     def filter_invalid_postcodes(self):
         np_is_active_postcode = np.isnan(np.asarray(self.np_postcodes[:,2], dtype=np.float32))
         self.np_postcodes = self.np_postcodes[np_is_active_postcode]

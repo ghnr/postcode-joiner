@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from numpy.testing import assert_array_equal, assert_array_almost_equal
 from pandas import read_csv
 from pandas.testing import assert_frame_equal
 from postcode_joiner import postcode_joiner
@@ -29,31 +30,39 @@ def test_invalid_postcode_filtering(postcode_joiner_obj):
 
 def test_haversine_computation(postcode_joiner_obj, array_samples):
     haversine_output = postcode_joiner_obj.compute_haversine_distance(array_samples[0], array_samples[1])
-    np.testing.assert_array_almost_equal(haversine_output, expected_results.haversine_result, decimal=8)
+    assert_array_almost_equal(haversine_output, expected_results.haversine_result, decimal=8,
+                              err_msg="Haversine computation results do not match")
     
 def test_euclidean_computation(postcode_joiner_obj, array_samples):
     euclidean_output = postcode_joiner_obj.compute_euclidean_distance(array_samples[0], array_samples[1])
-    np.testing.assert_array_almost_equal(euclidean_output, expected_results.euclidean_result, decimal=8)
+    assert_array_almost_equal(euclidean_output, expected_results.euclidean_result, decimal=8,
+                              err_msg="Euclidean computation results do not match")
     
-def test_stack_pairs(postcode_joiner_obj, array_samples):
-    postcode_joiner_obj.stack_lat_long_pairs(array_samples[0], array_samples[1])
+def test_stack_pairs(postcode_joiner_obj):
+    assert_array_almost_equal(postcode_joiner_obj.stack_lat_long_pairs()[0], expected_results.coords_result[0], decimal=8)
+    assert_array_almost_equal(postcode_joiner_obj.stack_lat_long_pairs()[1], expected_results.coords_result[1], decimal=8)
+
+def test_tradeoff_bad_value_raise(postcode_joiner_obj):
+    with pytest.raises(ValueError):
+        postcode_joiner_obj.compute_in_chunks("bad-tradeoff-arg")
+
+def test_minimum_distance_accuracy(postcode_joiner_obj):
+    assert list(postcode_joiner_obj.get_minimum_distance_postcodes("accuracy")) == expected_results.accuracy_result
+
+def test_minimum_distance_speed(postcode_joiner_obj):
+    assert list(postcode_joiner_obj.get_minimum_distance_postcodes("speed")) == expected_results.speed_result
     
-# def test_extract_postcode(postcode_joiner_obj):
-#     postcode_joiner_obj.extract_postcode_from_location()
-#     assert_frame_equal(postcode_joiner_obj.df_address_list, expected_results.result_address_extracted)
-#
-# def test_validate_postcodes(postcode_joiner_obj):
-#     postcode_joiner_obj.validate_postcodes()
-#     assert_frame_equal(postcode_joiner_obj.df_address_list, expected_results.result_address_validated)
-#
-# def test_misc_clean_data(postcode_joiner_obj):
-#     postcode_joiner_obj.misc_clean_output_data()
-#     assert_frame_equal(postcode_joiner_obj.df_address_list, expected_results.result_address_cleaned)
-#
-# def test_export_tsv(postcode_joiner_obj):
-#     postcode_joiner_obj.export_as_tsv("./data/export.tsv")
-#
-#     assert_frame_equal(read_csv("./data/export.tsv"), expected_results.result_export)
+def test_extract_postcode(postcode_joiner_obj):
+    assert list(postcode_joiner_obj.extract_postcode_from_location()) == expected_results.extract_result, \
+        "Extracted postcodes do not match"
+
+def test_export_tsv(postcode_joiner_obj):
+    
+    postcode_joiner_obj.export_as_tsv("./data/export.tsv",
+                                      np.array(expected_results.accuracy_result),
+                                      np.array(expected_results.valid_result))
+
+    assert_frame_equal(read_csv("./data/export.tsv"), expected_results.result_export)
 
 if __name__ == '__main__':
     pytest.main()
